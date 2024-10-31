@@ -30,7 +30,20 @@ def project_world_point_to_image(camera: Camera, point: np.ndarray) -> np.ndarra
     Returns:
         np.ndarray: [u, v] pixel coordinates corresponding to the point.
     """
-    raise NotImplementedError()
+
+    # object point
+    xo, yo, zo = point
+
+    # image point
+    xi = camera.fx * xo / zo
+    yi = camera.fy * yo / zo
+
+    # pixel coordinates
+    u = xi + camera.cx
+    v = yi + camera.cy
+
+    return np.array([u, v])
+
 
 
 def compute_image_footprint_on_surface(camera: Camera, distance_from_surface: float) -> np.ndarray:
@@ -43,7 +56,11 @@ def compute_image_footprint_on_surface(camera: Camera, distance_from_surface: fl
     Returns:
         np.ndarray: [footprint_x, footprint_y] in meters.
     """
-    raise NotImplementedError()
+    footprint_x = distance_from_surface * (camera.image_size_x_px / camera.fx)
+    footprint_y = distance_from_surface * (camera.image_size_y_px / camera.fy)
+
+    return np.array([footprint_x, footprint_y])
+  
 
 def compute_ground_sampling_distance(camera: Camera, distance_from_surface: float) -> float:
     """Compute the ground sampling distance (GSD) at a given distance from the surface.
@@ -55,4 +72,34 @@ def compute_ground_sampling_distance(camera: Camera, distance_from_surface: floa
     Returns:
         float: the GSD in meters (smaller among x and y directions).
     """
-    raise NotImplementedError()
+    footprint_x, footprint_y = compute_image_footprint_on_surface(camera, distance_from_surface)
+
+    gsd_x = footprint_x / camera.image_size_x_px
+    gsd_y = footprint_y / camera.image_size_y_px
+
+    return min(gsd_x, gsd_y)
+
+
+def reproject_image_point_to_world(camera: Camera, pixel: np.ndarray, distance_from_surface: float) -> np.ndarray:
+    """Reproject a 2D image point back to a 3D world point.
+
+    Args:
+        camera (Camera): the camera model.
+        pixel (np.ndarray): the 2D pixel location [u, v].
+        depth (float): the depth (distance from the camera) of the point.
+
+    Returns:
+        np.ndarray: the 3D world point [x, y, z].
+    """
+    u, v = pixel
+
+    # Convert pixel coordinates to image coordinates
+    xi = (u - camera.cx) / camera.fx
+    yi = (v - camera.cy) / camera.fy
+
+    # Compute the 3D world coordinates
+    x = xi * distance_from_surface
+    y = yi * distance_from_surface
+    z = distance_from_surface
+
+    return np.array([x, y, z])
